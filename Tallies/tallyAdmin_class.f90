@@ -54,6 +54,7 @@ module tallyAdmin_class
   !!   histClerks       -> List of indices of all clerks that require histReport
   !!   cycleStartClerks -> List of indices of all clerks that require cycleStartReport
   !!   cycleEndClerks   -> List of indices of all clerks that require cycleEndReport
+  !!   dungeonUpdateClerks -> List of indices of all clerks that require dungeonUpdateReport
   !!   displayList      -> List of indices of all clerks that are registered for display
   !!   mem              -> Score Memory for all defined clerks
   !!
@@ -112,6 +113,7 @@ module tallyAdmin_class
     type(dynIntArray)  :: histClerks
     type(dynIntArray)  :: cycleStartClerks
     type(dynIntArray)  :: cycleEndClerks
+    type(dynIntArray)  :: dungeonUpdateClerks
 
     ! List of clerks to display
     type(dynIntArray)  :: displayList
@@ -138,6 +140,7 @@ module tallyAdmin_class
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+    procedure :: reportDungeonUpdate
 
     ! Interaction procedures
     procedure :: getResult
@@ -271,6 +274,7 @@ contains
     call self % histClerks % kill()
     call self % cycleStartClerks % kill()
     call self % cycleEndClerks % kill()
+    call self % dungeonUpdateClerks % kill()
 
     ! Kill score memory
     call self % mem % kill()
@@ -757,6 +761,47 @@ contains
 
   end subroutine reportCycleEnd
 
+
+  !!
+  !! Process Dungeon Update from Tallies
+  !! e.g. particle flags
+  !!
+  !! Assumptions:
+  !!   Called before all cycles start to initialise particle colours
+  !!   Also called immediately after reportCycleEnd after particles have been transported
+  !!   before any modification or normalisation is applied to the particle Dungeon
+  !!
+  !! Args:
+  !!   end [inout] -> Particle Dungeon at the end of a cycle (before any normalisations)
+  !!
+  !! Errors:
+  !!   None
+  !!
+  recursive subroutine reportDungeonUpdate(self,end)
+    class(tallyAdmin), intent(inout)   :: self
+    class(particleDungeon), intent(inout) :: end
+    integer(shortInt)                  :: i
+    integer(shortInt), save            :: idx
+    character(100), parameter :: Here ='reportDungeonUpdate (tallyAdmin)class.f90)'
+    !$omp threadprivate(idx)
+
+    ! Call attachment
+    if(associated(self % atch)) then
+      call reportDungeonUpdate(self % atch, end)
+    end if
+
+    ! Go through all clerks that request the report
+    !$omp parallel do
+    do i=1,self % dungeonUpdateClerks % getSize()
+      idx = self % dungeonUpdateClerks % get(i)
+      call self % tallyClerks(idx) % reportDungeonUpdate(end)
+    end do
+    !$omp end parallel do
+
+
+  end subroutine reportDungeonUpdate
+    
+
   !!
   !! Get result from the clerk defined by name
   !!
@@ -836,6 +881,9 @@ contains
 
       case(cycleEnd_CODE)
         call self % cycleEndClerks % add(idx)
+
+      case(dungeonUpdate_CODE)
+        call self % dungeonUpdateClerks % add(idx)
 
       case default
         call fatalError(Here, 'Undefined reportCode')

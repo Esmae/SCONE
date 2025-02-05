@@ -41,6 +41,7 @@ module particle_class
   !!   broodID  -> ID of the source particle. It is used to indicate the primogenitor of the particles
   !!               in the particleDungeon so they can be sorted, which is necessary for reproducibility
   !!               with OpenMP
+  !!   colour   -> Flag index. Default 0. Changes depending on where the particle is, if colourTally used.
   !!
   !! Interface:
   !!   assignemnt(=)  -> Build particleState from particle
@@ -61,6 +62,7 @@ module particle_class
     integer(shortInt)          :: uniqueID = -1     ! Unique id at the lowest coord level
     integer(shortInt)          :: collisionN = 0    ! Number of collisions
     integer(shortInt)          :: broodID = 0       ! ID of the source particle
+    integer(shortInt)          :: colour = 0        ! Colour flag for particle, colourTally bin dependent
   contains
     generic    :: assignment(=)  => fromParticle
     generic    :: operator(.eq.) => equal_particleState
@@ -106,6 +108,7 @@ module particle_class
     integer(shortInt)          :: type           ! Particle type
     integer(shortInt)          :: collisionN = 0 ! Index of the number of collisions the particle went through
     integer(shortInt)          :: broodID = 0    ! ID of the brood (source particle number)
+    integer(shortInt)          :: colour = 0     ! Particle colour flag, based on position, colourTally bin dependent
 
     ! Particle processing information
     class(RNG), pointer        :: pRNG  => null()  ! Pointer to RNG associated with the particle
@@ -274,6 +277,7 @@ contains
     LHS % collisionN            = RHS % collisionN
     LHS % splitCount            = 0 ! Reinitialise counter for number of splits
     LHS % broodID               = RHS % broodID
+    LHS % colour                = RHS % colour
 
   end subroutine particle_fromParticleState
 
@@ -660,6 +664,7 @@ contains
     LHS % cellIdx  = RHS % coords % cell()
     LHS % collisionN = RHS % collisionN
     LHS % broodID    = RHS % broodID
+    LHS % colour     = RHS % colour
 
   end subroutine particleState_fromParticle
 
@@ -684,6 +689,7 @@ contains
     isEqual = isEqual .and. LHS % uniqueID == RHS % uniqueID
     isEqual = isEqual .and. LHS % collisionN == RHS % collisionN
     isEqual = isEqual .and. LHS % broodID    == RHS % broodID
+    isEqual = isEqual .and. LHS % colour   == RHS % colour
 
     if( LHS % isMG ) then
       isEqual = isEqual .and. LHS % G == RHS % G
@@ -727,6 +733,7 @@ contains
     self % uniqueID = -1
     self % collisionN = 0
     self % broodID    = 0
+    self % colour = 0
 
   end subroutine kill_particleState
 

@@ -174,6 +174,7 @@ contains
     ! Reset and start timer
     call timerReset(self % timerMain)
     call timerStart(self % timerMain)
+    call tally % reportDungeonUpdate(self % thisCycle)
 
     do i=1,N_cycles
 
@@ -233,6 +234,7 @@ contains
       ! Send end of cycle report
       Nend = self % nextCycle % popSize()
       call tally % reportCycleEnd(self % nextCycle)
+      call tally % reportDungeonUpdate(self % nextCycle)
 
       if (self % UFS) then
         call self % ufsField % updateMap()

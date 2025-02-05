@@ -1,4 +1,4 @@
-module collisionClerk_class
+module collisionConvClerk_class
 
   use numPrecision
   use tallyCodes
@@ -6,6 +6,7 @@ module collisionClerk_class
   use genericProcedures,          only : fatalError
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
+  use particleDungeon_class,      only : particleDungeon
   use outputFile_class,           only : outputFile
   use scoreMemory_class,          only : scoreMemory
   use tallyClerk_inter,           only : tallyClerk, kill_super => kill
@@ -30,6 +31,8 @@ module collisionClerk_class
   !!
   !! Collision estimator of reaction rates
   !! Calculates flux weighted integral from collisions
+  !! Stores flux at each cycle
+  !! Is not cumulative, therefore shows how response converges with cycles
   !!
   !! Private Members:
   !!   filter   -> Space to store tally Filter
@@ -40,22 +43,26 @@ module collisionClerk_class
   !! Interface
   !!   tallyClerk Interface
   !!
-  !! SAMPLE DICTIOANRY INPUT:
+  !! SAMPLE DICTIONARY INPUT:
   !!
-  !! myCollisionClerk {
-  !!   type collisionClerk;
+  !! myCollisionConvClerk {
+  !!   type collisionConvClerk;
   !!   # filter { <tallyFilter definition> } #
   !!   # map    { <tallyMap definition>    } #
+  !!   cycles 100;
   !!   response (resName1 #resName2 ... #)
   !!   resName1 { <tallyResponse definition> }
   !!   #resNamew { <tallyResponse definition #
   !! }
   !!
-  type, public, extends(tallyClerk) :: collisionClerk
+  type, public, extends(tallyClerk) :: collisionConvClerk
     private
     ! Filter, Map & Vector of Responses
     class(tallyFilter), allocatable                  :: filter
     class(tallyMap), allocatable                     :: map
+    integer(shortInt)                                :: N = 1      !! Number of bins
+    integer(shortInt)                                :: maxCycles = 0 !! Number of tally cycles
+    integer(shortInt)                                :: currentCycle = 0 !! track current cycle
     type(tallyResponseSlot),dimension(:),allocatable :: response
 
     ! Useful data
@@ -73,12 +80,13 @@ module collisionClerk_class
 
     ! File reports and check status -> run-time procedures
     procedure  :: reportInColl
+    procedure  :: reportCycleEnd
 
     ! Output procedures
     procedure  :: display
     procedure  :: print
 
-  end type collisionClerk
+  end type collisionConvClerk
 
 contains
 
@@ -88,7 +96,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine init(self, dict, name)
-    class(collisionClerk), intent(inout)        :: self
+    class(collisionConvClerk), intent(inout)    :: self
     class(dictionary), intent(in)               :: dict
     character(nameLen), intent(in)              :: name
     character(nameLen),dimension(:),allocatable :: responseNames
@@ -97,7 +105,7 @@ contains
     ! Assign name
     call self % setName(name)
 
-    ! Load filetr
+    ! Load filter
     if( dict % isPresent('filter')) then
       call new_tallyFilter(self % filter, dict % getDictPtr('filter'))
     end if
@@ -105,7 +113,12 @@ contains
     ! Load map
     if( dict % isPresent('map')) then
       call new_tallyMap(self % map, dict % getDictPtr('map'))
+      self % N = self % map % bins(0)
     end if
+
+    ! Read number of cycles for which to track response(s)
+    call dict % get(self % maxCycles, 'cycles')
+
 
     ! Get names of response dictionaries
     call dict % get(responseNames,'response')
@@ -122,13 +135,14 @@ contains
     ! Handle virtual collisions
     call dict % getOrDefault(self % handleVirtual,'handleVirtual', .true.)
 
+
   end subroutine init
 
   !!
   !! Return to uninitialised state
   !!
   elemental subroutine kill(self)
-    class(collisionClerk), intent(inout) :: self
+    class(collisionConvClerk), intent(inout) :: self
 
     ! Superclass
     call kill_super(self)
@@ -151,19 +165,23 @@ contains
 
     self % width   = 0
     self % handleVirtual = .true.
+    self % N = 0 
+    self % maxCycles = 0
+    self % currentCycle = 0
+
 
   end subroutine kill
 
   !!
-  !! Returns array of codes that represent diffrent reports
+  !! Returns array of codes that represent different reports
   !!
   !! See tallyClerk_inter for details
   !!
   function validReports(self) result(validCodes)
-    class(collisionClerk),intent(in)           :: self
+    class(collisionConvClerk),intent(in)           :: self
     integer(shortInt),dimension(:),allocatable :: validCodes
 
-    validCodes = [inColl_CODE]
+    validCodes = [inColl_CODE, cycleEnd_Code]
 
   end function validReports
 
@@ -173,13 +191,28 @@ contains
   !! See tallyClerk_inter for details
   !!
   elemental function getSize(self) result(S)
-    class(collisionClerk), intent(in) :: self
+    class(collisionConvClerk), intent(in) :: self
     integer(shortInt)                 :: S
 
     S = size(self % response)
+    S = S * self % maxCycles
     if(allocated(self % map)) S = S * self % map % bins(0)
 
   end function getSize
+
+
+  !! 
+  !! Updating cycle number count
+  !!
+  subroutine reportCycleEnd(self, end, mem)
+    class(collisionConvClerk), intent(inout) :: self
+    class(particleDungeon), intent(in) :: end
+    type(scoreMemory), intent(inout)   :: mem
+
+    self % currentCycle = self % currentCycle + 1
+
+  end subroutine reportCycleEnd
+
 
   !!
   !! Process incoming collision report
@@ -187,7 +220,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine reportInColl(self, p, xsData, mem, virtual)
-    class(collisionClerk), intent(inout)  :: self
+    class(collisionConvClerk), intent(inout)  :: self
     class(particle), intent(in)           :: p
     class(nuclearDatabase), intent(inout) :: xsData
     type(scoreMemory), intent(inout)      :: mem
@@ -196,7 +229,9 @@ contains
     integer(shortInt)                     :: binIdx, i
     integer(longInt)                      :: addr
     real(defReal)                         :: scoreVal, flux
-    character(100), parameter :: Here = 'reportInColl (collisionClerk_class.f90)'
+    character(100), parameter :: Here = 'reportInColl (collisionConvClerk_class.f90)'
+
+    if (self % currentCycle >= self % maxCycles) return 
 
     ! Return if collision is virtual but virtual collision handling is off
     if ((.not. self % handleVirtual) .and. virtual) return
@@ -227,11 +262,11 @@ contains
     end if
 
     ! Calculate bin address
-    addr = self % getMemAddress() + self % width * (binIdx - 1)  - 1
-
+    addr = self % getMemAddress() + self % width * (binIdx - 1 ) + (self % width * self % N)*(self % currentCycle) - 1
     ! Append all bins
     do i = 1, self % width
       scoreVal = self % response(i) % get(p, xsData) * flux
+
       call mem % score(scoreVal, addr + i)
 
     end do
@@ -244,10 +279,10 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine display(self, mem)
-    class(collisionClerk), intent(in)  :: self
+    class(collisionConvClerk), intent(in)  :: self
     type(scoreMemory), intent(in)      :: mem
 
-    print *, 'collisionClerk does not support display yet'
+    print *, 'collisionConvClerk does not support display yet'
 
   end subroutine display
 
@@ -257,7 +292,7 @@ contains
   !! See tallyClerk_inter for details
   !!
   subroutine print(self, outFile, mem)
-    class(collisionClerk), intent(in)          :: self
+    class(collisionConvClerk), intent(in)      :: self
     class(outputFile), intent(inout)           :: outFile
     type(scoreMemory), intent(in)              :: mem
     real(defReal)                              :: val, std
@@ -276,9 +311,9 @@ contains
     ! Write results.
     ! Get shape of result array
     if (allocated(self % map)) then
-      resArrayShape = [size(self % response), self % map % binArrayShape()]
+      resArrayShape = [size(self % response), self % map % binArrayShape(), self % maxCycles]
     else
-      resArrayShape = [size(self % response)]
+      resArrayShape = [size(self % response), self % maxCycles]
     end if
 
     ! Start array
@@ -287,8 +322,9 @@ contains
 
     ! Print results to the file
     do i = 1, product(resArrayShape)
-      call mem % getResult(val, std, self % getMemAddress() - 1 + i)
-      call outFile % addResult(val,std)
+      ! No std, as looking at single cycle numbers
+      call mem % getResult(val, self % getMemAddress() -1 + i, 1)
+      call outFile % addValue(val)
 
     end do
 
@@ -297,4 +333,4 @@ contains
 
   end subroutine print
 
-end module collisionClerk_class
+end module collisionConvClerk_class

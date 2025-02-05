@@ -96,6 +96,7 @@ module tallyClerk_inter
     procedure :: reportHist
     procedure :: reportCycleStart
     procedure :: reportCycleEnd
+    procedure :: reportDungeonUpdate
     procedure :: isConverged
 
     ! Output procedures
@@ -416,6 +417,20 @@ contains
     call fatalError(Here,'Report was sent to an instance that does not support it.')
 
   end subroutine reportCycleEnd
+
+
+  !!
+  !! Process Dungeon Updates before all cycles start, and after cycle end
+  !! 
+  !!
+  subroutine reportDungeonUpdate(self, end)
+    class(tallyClerk), intent(inout)   :: self
+    class(particleDungeon), intent(inout) :: end
+    character(100),parameter  :: Here = 'reportDungeonUpdate (tallyClerk_inter.f90)'
+
+    call fatalError(Here,'Report was sent to an instance that does not support it.')
+
+  end subroutine reportDungeonUpdate    
 
   !!
   !! Perform convergence check in the Clerk
