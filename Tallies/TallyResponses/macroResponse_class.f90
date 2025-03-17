@@ -89,7 +89,7 @@ contains
 
     ! Check that MT number is valid
     select case(MT)
-      case(macroTotal, macroCapture, macroFission, macroNuFission, macroAbsorbtion, macroEnergyDepoZero)
+      case(macroTotal, macroCapture, macroFission, macroNuFission, macroAbsorbtion)
         ! Do nothing. MT is Valid
 
       case(macroEscatter)
