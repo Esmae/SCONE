@@ -3,7 +3,7 @@ module colourClerk_class
   use numPrecision
   use tallyCodes
   use universalVariables
-  use genericProcedures,          only : fatalError
+  use genericProcedures,          only : fatalError, numToChar
   use dictionary_class,           only : dictionary
   use particle_class,             only : particle, particleState
   use particleDungeon_class,      only : particleDungeon
@@ -33,10 +33,9 @@ module colourClerk_class
   !!  clerkName {
   !!      type colourClerk;
   !!      cycles 500;
-  !!      axis x;
   !!      bins (bin1 bin2);
-  !!      bin1 {min -250; max -50}
-  !!      bin2 {min 50; max 250}
+  !!      bin1 {origin (-5.0 0.0 0.0); halfwidth (1.0 5.0 5.0);}
+  !!      bin2 {origin (5.0 0.0 0.0); halfwidth (1.0 5.0 5.0);}
   !!  }
   !!
   type, public, extends(tallyClerk) :: colourClerk
@@ -47,8 +46,7 @@ module colourClerk_class
     integer(shortInt)                              :: numBins = 0            !! Number of bins
     integer(shortInt)                              :: maxCycles = 0    !! Number of tally cycles
     integer(shortInt)                              :: currentCycle = 0 !! track current cycle
-    real(defReal), dimension(:,:), allocatable     :: colourBins        !! bin boundaries
-    integer(shortInt)                              :: axis             !! Axis of bin 
+    real(defReal), dimension(:,:,:), allocatable   :: colourBins        !! bin boundaries
 
 
   contains
@@ -80,44 +78,44 @@ contains
     class(dictionary), intent(in)             :: dict
     character(nameLen), intent(in)            :: name
     character(nameLen),dimension(:),allocatable :: binNames
-    integer(shortInt)                 :: i
-    character(nameLen)                 :: str
+    integer(shortInt)                 :: i, j, N
+    real(defReal), dimension(:), allocatable :: tempOrigin, tempHWidth
     character(100), parameter     :: Here = 'init (colourClerk_class.f90)'
 
-    if(.not.dict % isPresent('axis')) call fatalError(Here,"Keyword 'axis' must be present")
-
-    ! Find axis of tally
-    call dict % get(str,'axis')
-    select case(str)
-      case('x')
-        self % axis = X_axis
-
-      case('y')
-        self % axis = Y_axis
-
-      case('z')
-        self % axis = Z_axis
-
-      case default
-        call fatalError(Here,'Unrecognised axis: '//trim(str)//' must be x, y or z')
-    end select
-
-
-    ! Assign name
+    !Assign name
     call self % setName(name)
 
-    ! Read bin names
+    !Read bin names
     call dict % get(binNames,'bins')
     self % numBins = size(binNames)
 
-    ! Load bins
-    allocate(self % colourBins(self % numBins,2))
+    !Load bins
+    allocate(self % colourBins(self % numBins,3,2))
 
-    ! Load bin boundaries
+    !Load bin boundaries
     do i=1, self % numBins
        associate( binName => dict % getDictPtr(binNames(i)))
-       call binName % get(self % colourBins(i,1), 'min')
-       call binName % get(self % colourBins(i,2), 'max')
+
+       !Load origin
+       if(.not.binName % isPresent('origin')) call fatalError(Here,"Keyword 'origin' must be present")
+       call binName % get(tempOrigin,'origin')
+       N = size(tempOrigin)
+       if (N /= 3) call fatalError(Here,'origin must have size 3. Has: '//numToChar(N))
+
+       !Load halfwidth
+       if(.not.binName % isPresent('halfwidth')) call fatalError(Here,"Keyword 'halfwidth' must be present")
+       call binName % get(tempHWidth,'halfwidth')
+       N = size(tempHWidth)
+       if (N /= 3) then
+           call fatalError(Here, 'halfwidth must have size 3. Has: '//numToChar(N))
+       else if (any(tempHWidth < ZERO)) then
+           call fatalError(Here, 'halfwidth cannot have -ve values.')
+       end if
+       
+       do j=1, N
+           self % colourBins(i,j,1) = tempOrigin(j)-tempHWidth(j)
+           self % colourBins(i,j,2) = tempOrigin(j)+tempHWidth(j)
+       end do
        end associate
     end do
     
@@ -161,21 +159,27 @@ contains
   !! BIdx is zero if particle is not in a defined bin
   !!
   subroutine getBinIdx(self, state, bIdx) 
-    class(colourClerk), intent(in) :: self
-    class(particleState), intent(in)    :: state
-    integer(shortInt)              ::  i
-    integer(shortInt), intent(inout) :: bIdx
-    logical                        :: found
-    real(defReal)                  :: pos
+    class(colourClerk), intent(in)    :: self
+    class(particleState), intent(in)  :: state
+    integer(shortInt)                 ::  i, j
+    integer(shortInt), intent(inout)  :: bIdx
+    logical                           :: found, inbox
+    real(defReal), dimension(3)       :: pos
 
     character(100), parameter     :: Here = 'init (colourClerk_class.f90)'
    
     found = .false. 
     ! Loop through bins 
     do i=1, self % numBins
-       ! Get position of particle, along axis of tally
-       pos = state % r(self % axis)
-       if ((self % colourBins(i,1) .lt. pos) .and. (self % colourBins(i,2) .gt. pos)) then
+       ! Get position of particle
+       pos = state % r
+       inbox = .true. 
+       do j=1, size(pos)
+           if ((self % colourBins(i,j,1) .gt. pos(j)) .or. (self % colourBins(i,j,2) .lt. pos(j))) then
+               inbox = .false.
+           end if
+       end do
+       if (inbox) then
            if (found) then
                call fatalError(Here,'Particle lies in more than one bin')
            else
@@ -188,7 +192,7 @@ contains
       bIdx = 0
     end if
 
-    end subroutine getBinIdx
+  end subroutine getBinIdx
 
   !! 
   !! Update particle colour flags in Dungeon
