@@ -395,12 +395,19 @@ contains
     real(defReal), intent(out)          :: chiAden
     real(defReal), intent(out)          :: chiC
     real(defReal), intent(in)           :: E
-    real(defReal)                       :: beta2, speed
+    real(defReal)                       :: beta2, speed, p_mom, Chi2Nuc
 
     ! Calculate beta^2
     beta2 = (TWO * protonMass + E) * E / (protonMass + E)**2
     ! Speed is calculated from beta^2 - this takes into account relativistic effects
     speed = sqrt(beta2) * lightSpeed
+    p_mom2 = (E+protonMass)**2*beta2 ! Momentum squaredin (MeV/c)^2
+    Z = self % getZ() ! Atomic number
+    A = self % getMass() ! Atomic Mass
+    chiC = 0.2607046335_defReal  * Z * (Z+1) / (p_mom2 * beta2)
+    Chi2Nuc = 2.007*10**-5 * Z**(2/3) *(1+3.34 * (Z * alpha)**2 / beta2)/p_mom2 
+    ChiAnum = Z*(Z+1)*log(Chi2Nuc)/A
+    ChiAden = Z * (Z+1) / A
 
   end subroutine moliereScattering
 

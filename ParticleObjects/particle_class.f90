@@ -453,7 +453,7 @@ contains
   !!
   function getSpeed(self) result(speed)
     class(particle), intent(in) :: self
-    real(defReal)               :: speed
+    real(defReal)               :: speed, beta2
     character(100), parameter   :: Here = 'getSpeed (particle_class.f90)'
 
     ! Verify the particle is not MG
@@ -467,8 +467,11 @@ contains
       speed = lightSpeed
 
     elseif (self % type == P_PROTON) then
-        speed = sqrt(TWO * self % E / protonMass) * lightSpeed
-
+        ! Need relativistic speed
+        ! Calculate beta^2
+        beta2 = (TWO * protonMass + self % E) * self % E / (protonMass + self % E)**2
+        ! Speed is calculated from beta^2 - this takes into account relativistic effects
+        speed = sqrt(beta2) * lightSpeed
     else
       call fatalError(Here, 'Particle type requested is neither neutron (1) nor photon (2). It is: ' &
                             & //numToChar(self % type))

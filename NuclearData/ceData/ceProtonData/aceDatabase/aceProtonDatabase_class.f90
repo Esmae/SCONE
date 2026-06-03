@@ -299,7 +299,7 @@ contains
 
         call self % nuclides(nucIdx) % moliereScattering(chiAnum, chiAden, chiC, E)
 
-        sumChiC    = sumChiC + chiC * dist
+        sumChiC    = sumChiC + chiC * dist * dens
         sumChiANum = sumChiANum + chiAnum
         sumChiADen = sumChiADen + chiAden
 

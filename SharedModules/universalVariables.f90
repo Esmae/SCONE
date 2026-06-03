@@ -86,8 +86,7 @@ module universalVariables
                               kBoltzmann   = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
                               energyPerFission = 200.0_defReal,     & ! MeV
                               alpha = ONE / 137.035999084_defReal,  & ! Inverse fine structure constant [-]
-                              h_bar = 6.582119569e-10_defReal
-                              ! Reduced Plank constant in MeV
+                              h_bar = 6.582119569e-10_defReal         ! Reduced Plank constant in MeV
 
   ! Unit conversion
   real(defReal), parameter :: joulesPerMeV = 1.60218e-13_defReal  ,&   ! Convert MeV to J

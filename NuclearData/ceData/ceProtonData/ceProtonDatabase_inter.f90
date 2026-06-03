@@ -476,8 +476,8 @@ contains
       sigma = ZERO
       return
     elseif (matIdx < 1 .or. matIdx > mm_nMat()) then
-      print *,'Particle location: ', p % rGlobal()
-      call fatalError(Here, 'Particle is in an undefined material with index: '&
+      print *,'Particle prePath location: ', p % prePath % r
+      call fatalError(Here, 'Particle prePath in an undefined material with index: '&
               //numToChar(matIdx))
     end if
 
