@@ -374,7 +374,7 @@ contains
     denom = I * (ONE - beta2)
 
     sigma1 = 0.5101176014_defReal * self % getZ() * (log(num / denom) - beta2) / beta2
-    sigma2 = 4.0e-24_defReal * PI * self % getZ() * (h_bar * lightSpeed * alpha)**2 * &
+    sigma2 = 4.0e+24_defReal * PI * self % getZ() * (h_bar * lightSpeed * alpha)**2 * &
              & lorentz2 * (ONE - HALF * beta2)
 
   end subroutine betheBloch
@@ -395,7 +395,7 @@ contains
     real(defReal), intent(out)          :: chiAden
     real(defReal), intent(out)          :: chiC
     real(defReal), intent(in)           :: E
-    real(defReal)                       :: beta2, speed, p_mom, Chi2Nuc
+    real(defReal)                       :: beta2, speed, p_mom2, Chi2Nuc, Z, A
 
     ! Calculate beta^2
     beta2 = (TWO * protonMass + E) * E / (protonMass + E)**2
@@ -405,7 +405,7 @@ contains
     Z = self % getZ() ! Atomic number
     A = self % getMass() ! Atomic Mass
     chiC = 0.2607046335_defReal  * Z * (Z+1) / (p_mom2 * beta2)
-    Chi2Nuc = 2.007*10**-5 * Z**(2/3) *(1+3.34 * (Z * alpha)**2 / beta2)/p_mom2 
+    Chi2Nuc = 2.007E-5_defReal * Z**(2/3.0_defReal) *(1+3.34 * (Z * alpha)**2 / beta2)/p_mom2 
     ChiAnum = Z*(Z+1)*log(Chi2Nuc)/A
     ChiAden = Z * (Z+1) / A
 

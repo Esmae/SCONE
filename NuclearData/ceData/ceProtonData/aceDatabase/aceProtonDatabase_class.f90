@@ -239,7 +239,7 @@ contains
     integer(shortInt), intent(in)        :: matIdx
     real(defReal), intent(in)            :: dist
     class(RNG), intent(inout)            :: rand
-    real(defReal)                        :: deltaE
+    real(defReal)                        :: deltaE, deltaE1, deltaE2
     integer(shortInt)                    :: i, nucIdx
     real(defReal)                        :: dens, sigma1, sigma2, sumSigma1, &
                                             sumSigma2, r1, r2
@@ -265,7 +265,12 @@ contains
 
     r1 = rand % get()
     r2 = rand % get()
-    deltaE = sumSigma1 * dist + sampleNormal(r1, r2) * sqrt(sumSigma2 * dist)
+    deltaE1 = sumSigma1 * dist ! Deterministic betheBloch part of energy loss
+    deltaE2 = sampleNormal(r1, r2) * sqrt(sumSigma2 * dist) ! Brownian motion part of energy loss 
+    ! Energy loss is always positive (i.e. energy doesn't increase)
+    ! Energy loss must be symmetric about the deterministic component
+    ! There is a max and min cutoff
+    deltaE = MIN(MAX(deltaE1+deltaE2,0.0_defReal),2*deltaE1)
 
   end function getMaterialEnLoss
 
