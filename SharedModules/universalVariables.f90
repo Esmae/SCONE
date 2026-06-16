@@ -7,7 +7,7 @@ module universalVariables
   ! *** DON't CHANGE THIS. HARDCODED IS FINE
   ! CHANGE THIS: NUMBER MUST BE CALCULATED DURING INITIAL GEOMETRY PROCESSING
   ! Problematic for separating modules!
-  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 8
+  integer(shortInt), parameter, public :: HARDCODED_MAX_NEST = 12
   integer(shortInt), parameter, public :: MAX_OUTGOING_PARTICLES = 5
 
   ! CHANGE THIS: NUMBER WILL DEPEND ON SYSTEM ARCHITECTURE
@@ -24,11 +24,16 @@ module universalVariables
                                       INF         = 2.0_defReal**63, &
                                       NUDGE       = 1.0e-8_defReal     ! Distance to poke neutrons across boundaries for surface tracking
 
+  ! Energy variables
+  real(defReal), parameter, public :: MINIMUM_ENERGY = 1.0E-11_defReal, &
+                                      MAXIMUM_ENERGY = 20.0_defReal
+  
   ! Flags for different possible events in movement in geometry
-  integer(shortINt), parameter, public :: COLL_EV = 1, &
+  integer(shortInt), parameter, public :: COLL_EV = 1, &
                                           BOUNDARY_EV = 2, &
                                           CROSS_EV = 3, &
-                                          LOST_EV  = 4
+                                          LOST_EV  = 4, &
+                                          FIELD_EV = 5
 
   ! Create definitions for readability when dealing with positions relative to surfaces
   logical(defBool), parameter, public :: behind = .FALSE., &
@@ -76,6 +81,10 @@ module universalVariables
   integer(shortInt), parameter :: MATERIAL_XS = 1, &
                                   MAJORANT_XS = 2, &
                                   TRACKING_XS = 3
+  
+  ! Unit conversion
+  real(defReal), parameter :: joulesPerMeV = 1.60218e-13_defReal ,& ! Convert MeV to J
+                              shakesPerS   = 1.0e+8_defReal         ! Convert shakes to s
 
   ! Physical constants
   ! Neutron mass and speed of light in vacuum from from https://physics.nist.gov/cuu/Constants/index.html
@@ -84,16 +93,24 @@ module universalVariables
                               electronMass = 0.51099895069_defReal, & ! Electron mass in MeV (m*c^2)
                               lightSpeed   = 2.99792458e10_defReal, & ! Light speed in cm/s
                               kBoltzmann   = 1.380649e-23_defReal,  & ! Bolztmann constant in J/K
+                              kBoltzmannMeV = kBoltzmann / joulesPerMeV, & ! Bolztmann constant in MeV/K
                               energyPerFission = 200.0_defReal,     & ! MeV
                               alpha = ONE / 137.035999084_defReal,  & ! Inverse fine structure constant [-]
                               h_bar = 6.582119569e-10_defReal         ! Reduced Plank constant in MeV
 
-  ! Unit conversion
-  real(defReal), parameter :: joulesPerMeV = 1.60218e-13_defReal  ,&   ! Convert MeV to J
-                              shakesPerS   = 1.0e8_defReal             ! Convert shakes to s
-
   ! Global name variables used to define specific geometry or field types
-  character(nameLen), parameter :: nameUFS  = 'uniFissSites'
-  character(nameLen), parameter :: nameWW   = 'WeightWindows'
+  character(nameLen), parameter :: nameUFS          = 'uniFissSites'
+  character(nameLen), parameter :: nameWW           = 'WeightWindows'
+  character(nameLen), parameter :: nameTemperature  = 'temperature'
+  character(nameLen), parameter :: nameDensity      = 'density'
+
+  ! Flags associated with fields
+  real(defReal), parameter :: NO_TEMPERATURE = -INF, &
+                              NO_DENSITY = -INF
+  
+  ! Flag to indicate source file format
+  integer(shortInt), parameter, public :: NO_PRINTING = 0, &
+                                          ASCII_FILE  = 1, &
+                                          BINARY_FILE = 2
 
 end module universalVariables

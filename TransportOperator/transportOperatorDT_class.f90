@@ -5,25 +5,25 @@ module transportOperatorDT_class
   use numPrecision
   use universalVariables
 
-  use errors_mod,                 only : fatalError
-  use genericProcedures,          only : numToChar
-  use particle_class,             only : particle
-  use particleDungeon_class,      only : particleDungeon
-  use dictionary_class,           only : dictionary
+  use errors_mod,               only : fatalError
+  use genericProcedures,        only : numToChar
+  use particle_class,           only : particle
+  use particleDungeon_class,    only : particleDungeon
+  use dictionary_class,         only : dictionary
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator, init_super => init
+  use transportOperator_inter,  only : transportOperator, init_super => init
 
   ! Geometry interfaces
-  use geometry_inter,             only : geometry
+  use geometry_inter,           only : geometry
 
   ! Tally interface
   use tallyCodes
-  use tallyAdmin_class,           only : tallyAdmin
+  use tallyAdmin_class,         only : tallyAdmin
 
   ! Nuclear data interfaces
-  use nuclearDataReg_mod,         only : ndReg_get => get
-  use nuclearDatabase_inter,      only : nuclearDatabase
+  use nuclearDataReg_mod,       only : ndReg_get => get
+  use nuclearDatabase_inter,    only : nuclearDatabase
 
   implicit none
   private
@@ -50,7 +50,7 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon), intent(inout)     :: thisCycle
     class(particleDungeon), intent(inout)     :: nextCycle
-    real(defReal)                             :: majorant_inv, sigmaT, distance
+    real(defReal)                             :: majorant_inv, sigmaT, distance, speed, time
     character(100), parameter :: Here = 'deltaTracking (transportOperatorDT_class.f90)'
 
     ! Get majorant XS inverse: 1/Sigma_majorant
@@ -61,9 +61,19 @@ contains
 
     DTLoop:do
       distance = -log( p% pRNG % get() ) * majorant_inv
+        
+      speed = p % getSpeed()
+      time = distance / speed + p % time
 
-      ! Move partice in the geometry
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        distance = speed * (p % timeMax - p % time)
+        p % fate = AGED_FATE
+      end if
+
+      ! Move particle in the geometry and time
       call self % geom % teleport(p % coords, distance)
+      p % time = p % time + distance / speed
       
       select case(p % matIdx())
 
@@ -71,10 +81,11 @@ contains
         case(OUTSIDE_FILL)
           p % fate = LEAK_FATE
           p % isDead = .true.
-          return
+          exit DTLoop
 
         ! Check for void
         case(VOID_MAT)
+          if (p % fate == AGED_FATE) exit DTLoop
           call tally % reportInColl(p, .true.)
           cycle DTLoop
 
@@ -92,7 +103,15 @@ contains
           ! All is well        
 
       end select
+      
+      ! If particle has aged, exit
+      if (p % fate == AGED_FATE) then
+        exit DTLoop
+      end if
 
+      ! Get local conditions of temperature and density
+      call self % localConditions(p)
+      
       ! Obtain the local cross-section
       sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 

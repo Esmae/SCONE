@@ -10,6 +10,22 @@ codes suitable for design calculations.
 
 SCONE documentation is hosted at: <https://scone.readthedocs.io>
 
+To cite SCONE, please use the following:
+```bibtex
+@article{sconeANE,
+  title   = {Status of the SCONE Monte Carlo neutron transport code},
+  journal = {Annals of Nuclear Energy},
+  volume  = {227},
+  pages   = {112015},
+  year    = {2026},
+  issn    = {0306-4549},
+  doi     = {10.1016/j.anucene.2025.112015},
+  url     = {https://www.sciencedirect.com/science/article/pii/S0306454925008321},
+  author  = {Valeria Raffuzzi and Paul Cosgrove and Mikolaj Adam Kowalski},
+  keywords = {SCONE, Monte Carlo, Neutron transport},
+}
+```
+
 ## Prerequisites
 Required
 
@@ -24,7 +40,7 @@ Optional
 * Python 3 interpreter
 
 ## Installation
-Instructions are avaliable in the Sphinx documentation.
+Instructions are available in the Sphinx documentation.
 
 ## Compiling Documentation
 Sphinx documentation is available in the docs folder. It is readable with any reStructuredText (RST)
@@ -35,12 +51,12 @@ command. Option `--user` installs them in your home directory and does not requi
 ```
 pip install --user -U sphinx, sphinx_rtd_theme
 ```
-Then natigate to `docs` folder and compile using `make`
+Then navigate to `docs` folder and compile using `make`
 ```
 make html
 ```
 
-HTML documentation should now be avaliable in `./_build/html`
+HTML documentation should now be available in `./_build/html`
 
 ## Licence
 This project is licensed under MIT Licence - see the [LICENCE](LICENCE) file for details.

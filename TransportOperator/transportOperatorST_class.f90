@@ -5,23 +5,23 @@ module transportOperatorST_class
   use numPrecision
   use universalVariables
 
-  use errors_mod,                 only : fatalError
-  use particle_class,             only : particle
-  use particleDungeon_class,      only : particleDungeon
-  use dictionary_class,           only : dictionary
+  use errors_mod,               only : fatalError
+  use particle_class,           only : particle
+  use particleDungeon_class,    only : particleDungeon
+  use dictionary_class,         only : dictionary
 
   ! Superclass
-  use transportOperator_inter,    only : transportOperator, init_super => init
+  use transportOperator_inter,  only : transportOperator, init_super => init
 
   ! Geometry interfaces
-  use geometry_inter,             only : geometry, distCache
+  use geometry_inter,           only : geometry, distCache
 
   ! Tally interface
   use tallyCodes
-  use tallyAdmin_class,           only : tallyAdmin
+  use tallyAdmin_class,         only : tallyAdmin
 
   ! Nuclear data interfaces
-  use nuclearDatabase_inter,      only : nuclearDatabase
+  use nuclearDatabase_inter,    only : nuclearDatabase
 
   implicit none
   private
@@ -51,14 +51,19 @@ contains
     type(tallyAdmin), intent(inout)           :: tally
     class(particleDungeon),intent(inout)      :: thisCycle
     class(particleDungeon),intent(inout)      :: nextCycle
-    integer(shortInt)                         :: event
-    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack
+    integer(shortInt)                         :: event, collFate
+    real(defReal)                             :: sigmaT, dist, sigmaTrack, invSigmaTrack, &
+                                                 speed, time
     type(distCache)                           :: cache
     real(defReal), parameter                  :: tol  = 1.0E-12
     character(100), parameter :: Here = 'surfaceTracking (transportOperatorST_class.f90)'
 
+    
     STLoop: do
         
+      ! Get local conditions
+      call self % localConditions(p)
+      
       sigmaTrack = self % xsData % getTrackingXS(p, p % matIdx(), MATERIAL_XS)
 
       ! Obtain the local cross-section, depending on the material
@@ -70,7 +75,7 @@ contains
         sigmaT = ZERO
 
       else
-      
+        
         invSigmaTrack = ONE / sigmaTrack
         dist = -log( p % pRNG % get()) * invSigmaTrack
       
@@ -78,8 +83,24 @@ contains
         sigmaT = self % xsData % getTrackMatXS(p, p % matIdx())
 
         ! Should never happen! Catches NaN distances
-        if (dist /= dist) call fatalError(Here, "Distance is NaN")
+        if (dist /= dist) then
+          print *, "Particle location: ", p % rGlobal()
+          print *, "Particle direction: ", p % dirGlobal()
+          print *, "Total XS: ", sigmaT
+          call fatalError(Here, "Distance is NaN")
+        end if
 
+      end if
+
+      speed = p % getSpeed()
+      time = dist / speed + p % time
+      
+      ! Set a max flight distance due to hitting the time-boundary
+      if (p % timeMax > ZERO .and. time > p % timeMax) then
+        dist = speed * (p % timeMax - p % time)
+        collFate = AGED_FATE
+      else
+        collFate = NO_FATE
       end if
 
       ! Save state before movement
@@ -93,6 +114,12 @@ contains
         call self % geom % move(p % coords, dist, event)
 
       end if
+
+      ! Advance in time
+      p % time = p % time + dist / speed
+
+      ! Set fate if a collision occurred
+      if (event == COLL_EV) p % fate = collFate
 
       ! Send tally report for a path moved
       call tally % reportPath(p, dist)
@@ -119,7 +146,8 @@ contains
 
       end select
 
-      if (p % isDead) exit STLoop
+      ! Return if particle is stopped by death, or aging
+      if (p % isDead .or. p % fate == AGED_FATE) exit STLoop
 
       ! Roll RNG to determine if the collision is real or virtual
       ! Exit the loop if the collision is real, report collision if virtual

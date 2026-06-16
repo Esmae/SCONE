@@ -2,7 +2,7 @@ module plane_class
 
   use numPrecision
   use universalVariables, only : X_AXIS, Y_AXIS, Z_AXIS, INF
-  use genericProcedures,  only : fatalError, dotProduct, numToChar
+  use genericProcedures,  only : fatalError, numToChar
   use dictionary_class,   only : dictionary
   use surface_inter,      only : surface, kill_super => kill
   implicit none
@@ -37,6 +37,7 @@ module plane_class
     procedure :: evaluate
     procedure :: distance
     procedure :: going
+    procedure :: normal
     procedure :: kill
   end type plane
 
@@ -103,7 +104,7 @@ contains
   !!
   !! See surface_inter for details
   !!
-  !! Always returns infinate box (even when aligned with some axis)
+  !! Always returns infinite box (even when aligned with some axis)
   !!
   pure function boundingBox(self) result(aabb)
     class(plane), intent(in)   :: self
@@ -124,7 +125,7 @@ contains
     real(defReal), dimension(3), intent(in) :: r
     real(defReal)                           :: c
 
-    c = dotProduct(r, self % norm) - self % offset
+    c = dot_product(r, self % norm) - self % offset
 
   end function evaluate
 
@@ -147,7 +148,7 @@ contains
     real(defReal)                           :: d
     real(defReal)                           :: k, c
 
-    k = dotProduct(u, self % norm)
+    k = dot_product(u, self % norm)
     c = self % evaluate(r)
 
     if ( k == ZERO .or. abs(c) < self % surfTol()) then ! Parallel or at the surface
@@ -176,7 +177,7 @@ contains
     logical(defBool)                        :: halfspace
     real(defReal)                           :: proj
 
-    proj = dotProduct(u, self % norm)
+    proj = dot_product(u, self % norm)
     halfspace = proj > ZERO
 
     ! Special case of parallel direction
@@ -186,6 +187,19 @@ contains
     end if
 
   end function going
+  
+  !!
+  !! Return the surface normal, already computed
+  !!
+  pure function normal(self, r, u) result(n)
+    class(plane), intent(in)              :: self
+    real(defReal), dimension(3), intent(in) :: r
+    real(defReal), dimension(3), intent(in) :: u
+    real(defReal), dimension(3)             :: n
+
+    n = self % norm
+
+  end function normal
 
   !!
   !! Return to uninitialised state
