@@ -89,6 +89,8 @@ module aceProtonDatabase_class
     procedure :: getReaction
     procedure :: init
     procedure :: activate
+    procedure :: initMajorant
+
 
     ! ceProtonDatabase Procedures
     procedure :: energyBounds
@@ -703,6 +705,15 @@ contains
     call cache_init(size(self % materials), size(self % nuclides))
 
   end subroutine activate
+
+  subroutine initMajorant(self, loud, maxTemp, scaleDensity)
+    class(aceProtonDatabase), intent(inout) :: self
+    logical(defBool), intent(in), optional   :: loud
+    real(defReal), intent(in), optional      :: maxTemp
+    real(defReal), intent(in), optional      :: scaleDensity
+
+    ! Dummy routine just to satisfy the interface of ceProtonDatabase. Majorant is not used for protons.
+  end subroutine initMajorant
 
   !!
   !! Cast nuclearDatabase pointer to aceProtonDatabase type pointer
