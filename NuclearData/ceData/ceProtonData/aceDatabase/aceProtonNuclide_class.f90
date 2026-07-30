@@ -374,7 +374,7 @@ contains
     denom = I * (ONE - beta2)
 
     sigma1 = 0.5101176014_defReal * self % getZ() * (log(num / denom) - beta2) / beta2
-    sigma2 = 4.0e+24_defReal * PI * self % getZ() * (h_bar * lightSpeed * alpha)**2 * &
+    sigma2 = 4.0_defReal * PI * self % getZ() * (h_bar * lightSpeed * alpha)**2 * &
              & lorentz2 * (ONE - HALF * beta2)
 
   end subroutine betheBloch
