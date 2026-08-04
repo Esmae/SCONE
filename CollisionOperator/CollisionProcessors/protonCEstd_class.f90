@@ -289,7 +289,13 @@ contains
     end if
 
     ! Apply weigth change
-    p % w = p % w * reac % release(p % E)
+    if (p % E < self % minE) then
+      p % w = p % w
+      p % isDead = .true.
+    else
+      p % w = p % w * reac % release(p % E)
+    end if
+    
 
   end subroutine inelastic
 

@@ -36,6 +36,7 @@ module transportOperatorSBM_class
   type, public, extends(transportOperator) :: transportOperatorSBM
     logical(defBool)  :: cache = .true.
     real(defReal)     :: dx = 0.05 !TODO: Sort default, and init
+    real(defReal)     :: minE = 0.05
   contains
     procedure :: transit => sphericalBrownianMotion
     ! Override procedure
@@ -112,7 +113,7 @@ contains
       !Do energy update given travel distance dist
       eLoss = self % xsData % getEnergyLoss(p, p % prePath % matIdx, dist)
       ! TODO: Remove hard coded minimum energy 0.05MeV
-      if (eLoss .gt. (p % E - 0.05)) then
+      if (eLoss .gt. (p % E - self % minE)) then
           p % E = 0
           p % isDead = .true.
           p % fate = ABS_FATE
@@ -177,6 +178,9 @@ contains
 
     if (dict % isPresent('cache')) then
       call dict % get(self % cache, 'cache')
+    end if
+    if (dict % isPresent('minEnergy')) then
+      call dict % get(self % minE, 'minEnergy')
     end if
 
   end subroutine init
