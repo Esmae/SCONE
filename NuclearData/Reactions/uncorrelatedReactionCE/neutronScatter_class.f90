@@ -212,7 +212,6 @@ contains
       E_out = self % eLaw  % sample(E_in,rand)
 
     end if
-
     ! Prevent sampling energies below the common lower grid bound.
     ! Can occur, e.g., with MT 5
     E_out = max(E_out, MINIMUM_ENERGY)

@@ -243,6 +243,7 @@ contains
     reac => uncorrelatedReactionCE_CptrCast( self % xsData % getReaction(collDat % MT, collDat % nucIdx))
     if (.not.associated(reac)) call fatalError(Here,'Failed to get elastic neutron scatter')
 
+
     ! Scatter particle
     collDat % A =  self % nuc % getMass()
 
@@ -250,6 +251,7 @@ contains
     collDat % kT = self % nuc % getkT()
 
     isFixed = (p % E > collDat % kT * self % threshE) .and. (collDat % A > self % threshA)
+    isFixed = isFixed .or. (collDat % kT == ZERO)
 
     ! Apply criterion for Free-Gas vs Fixed Target scattering
     if (.not. reac % inCMFrame()) then
@@ -259,6 +261,7 @@ contains
     else
       call self % scatterFromMoving(p, collDat, reac)
     end if
+
 
   end subroutine elastic
 
@@ -292,6 +295,9 @@ contains
     if (p % E < self % minE) then
       p % w = p % w
       p % isDead = .true.
+    else if (p % E > self % maxE) then
+      p % E = self % maxE-10e-3
+      p % w = p % w * reac % release(p % E)
     else
       p % w = p % w * reac % release(p % E)
     end if
@@ -311,6 +317,7 @@ contains
     class(particleDungeon),intent(inout) :: nextCycle
 
     if (p % E < self % minE) p % isDead = .true.
+    if (p % E > self % maxE) p % E = self % maxE-10e-3
 
   end subroutine cutoffs
 
