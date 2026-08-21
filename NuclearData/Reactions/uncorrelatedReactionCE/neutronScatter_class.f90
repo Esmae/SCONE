@@ -273,7 +273,7 @@ contains
     class(neutronScatter), intent(inout) :: self
     type(aceCard), intent(inout)         :: ACE
     integer(shortInt), intent(in)        :: MT
-    integer(shortInt)                    :: LOCB, TY
+    integer(shortInt)                    :: LOCB, TY, LAW, LNW
     character(100),parameter :: Here ='buildFromACE (neutronScatter_class.f90)'
 
     if (ACE % isCaptureMT(MT)) then
@@ -297,18 +297,29 @@ contains
 
     call new_releaseLawENDF(self % releaseLaw, ACE, MT)
 
+    ! Need to check if reaction has LAW=67
+    call ACE % setToEnergyMT(MT)
+    LNW  = ACE % readInt()
+    LAW  = ACE % readInt()
+    
+    ! If LAW=67 then reaction is correlated
+    if (LAW == 67) then
+      self % correlated = .true.
+      call new_correlatedLawENDF(self % corrLaw, ACE, MT)
+    else
     ! Build as correlated or uncorrelated depending on LOCB
-    select case(LOCB)
-      case(LOCB_CORRELATED)
-        self % correlated = .true.
-        call new_correlatedLawENDF(self % corrLaw, ACE, MT)
+      select case(LOCB)
+        case(LOCB_CORRELATED)
+          self % correlated = .true.
+          call new_correlatedLawENDF(self % corrLaw, ACE, MT)
 
-      case default
-        self % correlated = .false.
-        call new_angleLawENDF(self % muLaw, ACE, MT)
-        call new_energyLawENDF(self % eLaw, ACE, MT)
+        case default
+          self % correlated = .false.
+          call new_angleLawENDF(self % muLaw, ACE, MT)
+          call new_energyLawENDF(self % eLaw, ACE, MT)
 
-    end select
+      end select
+    end if
 
   end subroutine buildFromACE
 

@@ -9,6 +9,7 @@ module correlatedLawENDFfactory_func
   use correlatedLawENDF_inter,      only : correlatedLawENDF
   use kalbach87_class,              only : kalbach87
   use endfLaw61_class,              only : endfLaw61
+  use endfLaw67_class,              only : endfLaw67
   use nBodyPhaseSpace_class,        only : nBodyPhaseSpace
   use multipleCorrelatedLaws_class, only : multipleCorrelatedLaws
 
@@ -43,8 +44,12 @@ contains
 
     ! Verify that the energy law is indeed coreelated
     LOCB = ACE % LOCBforMT(MT)
+    call ACE % setToEnergyMT(MT)
+    LNW  = ACE % readInt()
+    LAW  = ACE % readInt()
+    call ACE % resetHead()
 
-    if(LOCB /= LOCB_CORRELATED) then
+    if(LOCB /= LOCB_CORRELATED .and. LAW /= 67) then
       call fatalError(Here,'Reaction under MTdoes not have correlated mu-energy distribution')
     end if
 
@@ -157,6 +162,10 @@ contains
 
       case(endfEnergyLaw61)
         allocate(lawENDF, source = endfLaw61(ACE))
+
+      case(laboratoryAngleEnergyLaw)
+        ! For LAW 67 we need to pass the MT number to the constructor
+        allocate(lawENDF, source = endfLaw67(ACE, MT, root, offset))
 
       case(nBodyPhaseSpaceDistribution)
         !! Get Q & A value

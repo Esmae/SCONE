@@ -162,7 +162,7 @@ module endfConstants
                                   kalbach87Formalism            = 44 ,&
                                   endfEnergyLaw61               = 61 ,&
                                   nBodyPhaseSpaceDistribution   = 66 ,&
-                                  labratoryAngleEnergyLaw       = 67
+                                  laboratoryAngleEnergyLaw       = 67
 
 
 end module endfConstants
