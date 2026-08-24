@@ -14,6 +14,7 @@ add_sources(./tallyClerk_inter.f90
             ./removalTimeClerk_class.f90
             ./eventClerk_class.f90
             ./centreOfMassClerk_class.f90
+	    ./protonEnergyClerk_class.f90
             ./mgXsClerk_class.f90
              )
 

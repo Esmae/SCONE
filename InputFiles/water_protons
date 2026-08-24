@@ -1,0 +1,84 @@
+
+type fixedSourcePhysicsPackage;
+//type eigenPhysicsPackage;
+pop 100000;
+
+
+// Fixed source
+cycles   100;
+
+XSdata   ce;
+dataType h;
+seed 42;
+outputFormat asciiJSON;
+
+collisionOperator { protonCE {type protonCEstd; minEnergy 6; maxEnergy 200;} 
+                  }
+
+transportOperator { type transportOperatorSBM; minEnergy 6; maxEnergy 200;
+                  }
+
+source {
+  type pointSource;
+  r (0 0 0);
+  dir (1 0 0);
+  particle proton;
+  E 150.0;
+}
+
+tally { pE {type protonEnergyClerk; map {type spaceMap; axis x; grid lin; min 0; max 20; N 200;}}
+}
+
+
+geometry {
+    type geometryStd;
+    boundary (0 0 1 1 1 1);
+    graph {type shrunk;}
+
+    surfaces
+    {
+      squareBound { id 1; type box; origin ( 10.0  0.0  0.0); halfwidth (10.0 50.0 50.0); }
+    }
+
+
+    cells
+    {
+    }
+
+    universes
+    {
+
+      root
+      {
+          id 1;
+          type rootUniverse;
+          border 1;
+          fill fuel;
+      }
+    }
+}
+
+nuclearData {
+
+  handles {
+     ce { type aceProtonDatabase; aceLibrary $SCONE_ACE;}
+  }
+
+
+materials {
+
+    fuel {
+      temp       273;
+      excitationEnergy 0.000075;
+      composition {
+         1001.25    6.700E-002;
+         8016.25    3.350E-002;
+      }
+    }
+
+}
+
+}
+
+
+
