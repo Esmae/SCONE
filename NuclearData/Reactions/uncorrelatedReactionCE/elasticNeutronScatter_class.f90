@@ -53,6 +53,7 @@ module elasticNeutronScatter_class
     procedure :: releaseDelayed
     procedure :: sampleOut
     procedure :: probOf
+    procedure :: getMuMax
 
     !! Instance procedures
     procedure :: buildFromACE
@@ -60,6 +61,17 @@ module elasticNeutronScatter_class
   end type elasticNeutronScatter
 
 contains
+
+  !! 
+  !! Get max value for mu in elastic scattering angular distributions
+  !!
+  function getMuMax(self) result(muMax)
+    class(elasticNeutronScatter), intent(in) :: self 
+    real(defReal)                            :: muMax
+
+    muMax = self % angularData % getMaxMu()
+  
+  end function getMuMax
 
   !!
   !! Initialise

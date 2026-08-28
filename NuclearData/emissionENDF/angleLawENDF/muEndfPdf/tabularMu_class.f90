@@ -27,6 +27,7 @@ module tabularMu_class
     procedure :: sample
     procedure :: probabilityOf
     procedure :: kill
+    procedure :: bounds
 
     generic,private   :: init => init_withPDF, init_withCDF
     procedure,private :: init_withPDF
@@ -36,6 +37,16 @@ module tabularMu_class
 
 contains
 
+  !! 
+  !! Get the bounds of the underlying pdf
+  !!
+  elemental subroutine bounds(self, lower, upper)
+    class(tabularMu), intent(in) :: self
+    real(defReal), intent(out)   :: lower, upper
+
+    call self % pdf % bounds(lower, upper)
+  end subroutine bounds
+  
   !!
   !! Sample mu given RNG
   !!

@@ -27,6 +27,7 @@ module muEndfPdfSlot_class
     procedure :: sample
     procedure :: probabilityOf
     procedure :: kill
+    procedure :: bounds
 
     ! Define assignment
     procedure :: init
@@ -35,6 +36,16 @@ module muEndfPdfSlot_class
   end type muEndfPdfSlot
 
 contains
+
+  !! 
+  !! Get the bounds of the underlying pdf
+  !!
+  elemental subroutine bounds(self, lower, upper)
+    class(muEndfPdfSlot), intent(in) :: self
+    real(defReal), intent(out)       :: lower, upper
+
+    call self % slot % bounds(lower, upper)
+  end subroutine bounds
 
   !!
   !! Sample mu given random number generator

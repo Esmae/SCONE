@@ -33,12 +33,25 @@ module equiBin32Mu_class
     procedure :: sample
     procedure :: probabilityOf
     procedure :: kill
+    procedure :: bounds
 
     ! Local procedures
     procedure :: build
   end type equiBin32Mu
 
 contains
+
+  !! 
+  !! Get the bounds of the underlying pdf
+  !!
+  elemental subroutine bounds(self, lower, upper)
+    class(equiBin32Mu), intent(in) :: self
+    real(defReal), intent(out)     :: lower, upper
+
+    lower = self % boundaries(1)
+    upper = self % boundaries(33)
+  end subroutine bounds
+  
 
   !!
   !! Samples angle given random number generator

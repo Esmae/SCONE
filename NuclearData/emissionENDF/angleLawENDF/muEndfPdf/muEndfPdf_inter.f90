@@ -16,9 +16,21 @@ module muEndfPdf_inter
     procedure(sample), deferred        :: sample
     procedure(probabilityOf), deferred :: probabilityOf
     procedure(kill),deferred           :: kill
+    procedure(bounds), deferred        :: bounds
+
   end type muEndfPdf
 
   abstract interface
+
+    !! 
+    !! Get the bounds of the underlying pdf
+    !!
+    elemental subroutine bounds(self, lower, upper)
+      import :: muEndfPdf, defReal
+      class(muEndfPdf), intent(in) :: self
+      real(defReal), intent(out)   :: lower, upper
+    end subroutine bounds
+  
 
     !!
     !! Sample mu given random number generator

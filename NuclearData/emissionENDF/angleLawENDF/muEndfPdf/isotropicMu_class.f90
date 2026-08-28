@@ -22,10 +22,24 @@ module isotropicMu_class
     procedure :: sample
     procedure :: probabilityOf
     procedure :: kill
+    procedure :: bounds
   end type isotropicMu
 
 contains
 
+  !! 
+  !! Get the bounds of the underlying pdf
+  !!
+  elemental subroutine bounds(self, lower, upper)
+    class(isotropicMu), intent(in) :: self
+    real(defReal), intent(out)     :: lower, upper
+
+    ! Default behaviour for isotropic mu
+    lower = -ONE
+    upper = ONE
+
+  end subroutine bounds
+  
   !!
   !! Samples angle given the random number generator
   !!

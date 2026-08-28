@@ -73,6 +73,8 @@ module aceProtonNuclide_class
   !!   idxMT            -> intMap that maps MT -> index in MTdata array
   !!   elasticScatter   -> reactionHandle with data for elastic scattering
   !!   fission          -> reactionHandle with fission data (may be uninitialised)
+  !!   etaPrefactor     -> dimensionless Coulomb parameter prefactor, isotope specific
+  !!   kPrefactor       -> precomputed prefactor to compute the particle wave number 
   !!
   !! Interface:
   !!   ceProtonNuclide Interface
@@ -93,6 +95,11 @@ module aceProtonNuclide_class
     type(elasticNeutronScatter) :: elasticScatter
     type(fissionCE)             :: fission
 
+    ! Proton specific parameters
+    real(defReal)   :: etaPrefactor
+    real(defReal)   :: kPrefactor 
+    real(defReal)   :: muMax
+
   contains
     ! Superclass Interface
     procedure :: invertInelastic
@@ -105,6 +112,7 @@ module aceProtonNuclide_class
     procedure :: microXSs
     procedure :: betheBloch
     procedure :: moliereScattering
+    procedure :: rutherfordScattering
     procedure :: init
     procedure :: display
 
@@ -374,7 +382,7 @@ contains
     denom = I * (ONE - beta2)
 
     sigma1 = 0.5101176014_defReal * self % getZ() * (log(num / denom) - beta2) / beta2
-    sigma2 = 4.0_defReal * PI * self % getZ() * (h_bar * lightSpeed * alpha)**2 * &
+    sigma2 = 4.0_defReal * PI * self % getZ() * (h_bar * 1e12 * lightSpeed * alpha)**2 * &
              & lorentz2 * (ONE - HALF * beta2)
 
   end subroutine betheBloch
@@ -412,6 +420,30 @@ contains
   end subroutine moliereScattering
 
   !!
+  !! Return the Coulomb scattering cross-section using its analytical formula
+  !!
+  !! Args:
+  !!  
+
+  function rutherfordScattering(self, E) result(xs)
+    class(aceProtonNuclide), intent(in)      :: self
+    real(defReal), dimension(:), intent(in)  :: E
+    real(defReal), dimension(size(E))        :: eta, k
+    real(defReal), dimension(size(E))        :: xs
+    character(100), parameter :: Here = "rutherfordScattering (aceProtonNuclide_class.f90)"
+
+    eta = self % etaPrefactor / sqrt(E)
+    k = self % kPrefactor * sqrt(E)
+
+    if (self % getZ() /= 1) then 
+      xs = TWO * PI * (eta ** 2) / (k**2) * ( ONE / (1-self % muMax) - 0.5_defReal )
+    else
+      call fatalError(Here, "Should not be called for hydrogen")
+    end if
+ 
+  end function rutherfordScattering
+
+  !!
   !! Initialise from an ACE Card
   !!
   !! Args:
@@ -431,6 +463,8 @@ contains
     integer(shortInt)                             :: Ngrid, N, K, i, j, MT, &
                                                      bottom, top
     type(stackInt)                                :: scatterMT, absMT
+    real(defReal)                                 :: A
+    real(defReal), dimension(:), allocatable      :: coulombXS 
     character(100), parameter :: Here = "init (aceProtonNuclide_class.f90)"
 
     ! Reset nuclide just in case
@@ -450,6 +484,12 @@ contains
     ! Get size of the grid
     Ngrid = ACE % gridSize()
 
+    ! Get atomic mass ratio
+    A = self % getMass()
+    ! Compute dimensionless Coulomb prefactor and wave number prefactor
+    self % etaPrefactor = self % getZ() * ONE * sqrt(alpha**2 * protonMass / TWO)
+    self % kPrefactor = A / (1+A) * sqrt(TWO * protonMass / (h_bar**2 * lightSpeed**2)) * 1e-12
+
     ! Allocate space for main XSs
     if(self % isFissile()) then
       N = 6
@@ -468,6 +508,15 @@ contains
 
     ! Get elastic kinematics
     call self % elasticScatter % init(ACE, N_N_ELASTIC)
+    self % muMax = self % elasticScatter % getMuMax()
+
+    ! If nuclide is not hydrogen reconstruct the elastic xs from Rutherford + nuclear + interference
+    if (self % getZ() /= 1) then
+      allocate(coulombXS(size(self % eGrid)))
+      coulombXS = self % rutherfordScattering(self % eGrid)
+      self % mainData(TOTAL_XS,:) = self % mainData(TOTAL_XS,:) + coulombXS
+      self % mainData(ESCATTER_XS,:) = self % mainData(ESCATTER_XS,:) + coulombXS
+    end if
 
     ! Load Fission XS data
     ! Set 'bottom' variable to the start index of fission data
@@ -550,8 +599,6 @@ contains
       self % MTdata(i) % MT       = MT
       self % MTdata(i) % firstIdx = ACE % firstIdxMT(MT)
       self % MTdata(i) % xs       = ACE % xsMT(MT)
-
-      print*, MT, ' *** ', self % MTdata(i) % xs
 
       allocate(neutronScatter :: self % MTdata(i) % kinematics)
       call self % MTdata(i) % kinematics % init(ACE, MT)

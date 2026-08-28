@@ -96,7 +96,7 @@ module universalVariables
                               kBoltzmannMeV = kBoltzmann / joulesPerMeV, & ! Bolztmann constant in MeV/K
                               energyPerFission = 200.0_defReal,     & ! MeV
                               alpha = ONE / 137.035999084_defReal,  & ! Inverse fine structure constant [-]
-                              h_bar = 6.582119569e-10_defReal         ! Reduced Plank constant in MeV
+                              h_bar = 6.582119569e-22_defReal         ! Reduced Plank constant in MeV
 
   ! Global name variables used to define specific geometry or field types
   character(nameLen), parameter :: nameUFS          = 'uniFissSites'

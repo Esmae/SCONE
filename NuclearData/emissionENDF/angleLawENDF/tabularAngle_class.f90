@@ -34,9 +34,23 @@ module tabularAngle_class
       procedure :: sample
       procedure :: probabilityOf
       procedure :: kill
+      procedure :: getMaxMu
   end type tabularAngle
 
 contains
+
+  function getMaxMu(self) result(maxMu)
+    class(tabularAngle), intent(in)   :: self
+    integer(shortInt)                 :: i
+    real(defReal)                     :: maxMu, upper, lower
+    
+    maxMu = -ONE
+    do i = 1, size(self % muEndfPdfs)
+      call self % muEndfPdfs(i) % bounds(lower, upper)
+      maxMu = max(maxMu, upper)
+    end do
+  
+  end function getMaxMu
 
   !!
   !! Initialise from aceCard and MT number
