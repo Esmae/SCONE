@@ -99,6 +99,7 @@ module aceProtonNuclide_class
     real(defReal)   :: etaPrefactor
     real(defReal)   :: kPrefactor 
     real(defReal)   :: muMax
+    integer(shortInt) :: addedEnergies = 0
 
   contains
     ! Superclass Interface
@@ -143,6 +144,8 @@ contains
 
     ! Get inelastic XS
     XS = self % mainData(IESCATTER_XS, idx+1) * f + (ONE-f) * self % mainData(IESCATTER_XS, idx)
+
+    idx = idx - self % addedEnergies
 
     ! Invert
     XS = XS * rand % get()
@@ -311,7 +314,11 @@ contains
     real(defReal), intent(in)            :: f
     real(defReal)                        :: xs
 
-    xs = self % mainData(TOTAL_XS, idx+1) * f + (ONE-f) * self % mainData(TOTAL_XS, idx)
+    if (self % getZ() /= 1 .and. self % mainData(TOTAL_XS, idx) == ZERO) then
+      xs = ZERO
+    else
+      xs = self % mainData(TOTAL_XS, idx+1) * f + (ONE-f) * self % mainData(TOTAL_XS, idx)
+    end if
 
   end function totalXS
 
@@ -329,7 +336,7 @@ contains
   !!   Invalid idx beyond array bounds -> undefined behaviour
   !!   Invalid f (outside [0;1]) -> incorrect value of XSs
   !!
-  elemental subroutine microXSs(self, xss, idx, f)
+   subroutine microXSs(self, xss, idx, f)
     class(aceProtonNuclide), intent(in) :: self
     type(neutronMicroXSs), intent(out)   :: xss
     integer(shortInt), intent(in)        :: idx
@@ -339,7 +346,11 @@ contains
 
       xss % total            = data(TOTAL_XS, 2)  * f + (ONE-f) * data(TOTAL_XS, 1)
       xss % elasticScatter   = data(ESCATTER_XS, 2)  * f + (ONE-f) * data(ESCATTER_XS, 1)
-      xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+      if (self % getZ() /= 1 .and. data(IESCATTER_XS, 1) == ZERO) then
+        xss % inelasticScatter = ZERO
+      else
+        xss % inelasticScatter = data(IESCATTER_XS, 2) * f + (ONE-f) * data(IESCATTER_XS, 1)
+      end if
       xss % capture          = data(CAPTURE_XS, 2)   * f + (ONE-f) * data(CAPTURE_XS, 1)
 
       if (self % isFissile()) then
@@ -464,7 +475,8 @@ contains
                                                      bottom, top
     type(stackInt)                                :: scatterMT, absMT
     real(defReal)                                 :: A
-    real(defReal), dimension(:), allocatable      :: coulombXS 
+    real(defReal), dimension(:), allocatable      :: coulombXS
+    real(defReal), dimension(100)                 :: exponent
     character(100), parameter :: Here = "init (aceProtonNuclide_class.f90)"
 
     ! Reset nuclide just in case
@@ -490,21 +502,33 @@ contains
     self % etaPrefactor = self % getZ() * ONE * sqrt(alpha**2 * protonMass / TWO)
     self % kPrefactor = A / (1+A) * sqrt(TWO * protonMass / (h_bar**2 * lightSpeed**2)) * 1e-12
 
+    if (self % getZ() /= 1) self % addedEnergies = 100
+
     ! Allocate space for main XSs
     if(self % isFissile()) then
       N = 6
     else
       N = 4
     end if
-    allocate(self % mainData(N, Ngrid))
-
+    allocate(self % mainData(N, Ngrid + self % addedEnergies))
+    allocate(self % eGrid(Ngrid + self % addedEnergies))
     self % mainData = ZERO
+    
+    self % eGrid(self % addedEnergies+1:Ngrid + self % addedEnergies) =  ACE % ESZ_XS('energyGrid')
+    if (self % getZ() /= 1) then
+      do i = 1, self % addedEnergies
+        exponent(i) = -3.0_defReal + (i-1) * ( log10(self % eGrid(self % addedEnergies+1)) +3.0_defReal )/self % addedEnergies
+      end do
+      self % eGrid(1:self % addedEnergies) = 10.0 ** exponent
+    end if
+
+    print *, self % eGrid
 
     ! Load Main XSs
-    self % eGrid =  ACE % ESZ_XS('energyGrid')
-    self % mainData(TOTAL_XS,:)     = ACE % ESZ_XS('totalXS')
-    self % mainData(ESCATTER_XS,:)  = ACE % ESZ_XS('elasticXS')
-    self % mainData(CAPTURE_XS,:)   = ACE % ESZ_XS('absorptionXS')
+    self % mainData(TOTAL_XS,self % addedEnergies+1:Ngrid + self % addedEnergies)     = ACE % ESZ_XS('totalXS')
+    self % mainData(ESCATTER_XS,self % addedEnergies+1:Ngrid + self % addedEnergies)  = ACE % ESZ_XS('elasticXS')
+    self % mainData(CAPTURE_XS,self % addedEnergies+1:Ngrid + self % addedEnergies)   = ACE % ESZ_XS('absorptionXS')
+
 
     ! Get elastic kinematics
     call self % elasticScatter % init(ACE, N_N_ELASTIC)
@@ -512,10 +536,10 @@ contains
 
     ! If nuclide is not hydrogen reconstruct the elastic xs from Rutherford + nuclear + interference
     if (self % getZ() /= 1) then
-      allocate(coulombXS(size(self % eGrid)))
-      coulombXS = self % rutherfordScattering(self % eGrid)
-      self % mainData(TOTAL_XS,:) = self % mainData(TOTAL_XS,:) + coulombXS
-      self % mainData(ESCATTER_XS,:) = self % mainData(ESCATTER_XS,:) + coulombXS
+      allocate(coulombXS(self % addedEnergies))
+      coulombXS = self % rutherfordScattering(self % eGrid(1:self % addedEnergies))
+      self % mainData(TOTAL_XS,1:self % addedEnergies) = self % mainData(TOTAL_XS,1:self % addedEnergies) + coulombXS
+      self % mainData(ESCATTER_XS,1:self % addedEnergies) = self % mainData(ESCATTER_XS,1:self % addedEnergies) + coulombXS
     end if
 
     ! Load Fission XS data
@@ -618,12 +642,12 @@ contains
 
     ! Calculate Inelastic scattering XS
     do i = 1,self % nMT
-      do j = 1,size(self % mainData, 2)
+      do j = 1, Ngrid
         ! Find bottom and Top of the grid
         bottom = self % MTdata(i) % firstIdx
         top    = size(self % MTdata(i) % xs)
         if (j>= bottom .and. j <= top + bottom) then
-          self % mainData(IESCATTER_XS, j) = self % mainData(IESCATTER_XS, j) + &
+          self % mainData(IESCATTER_XS, self % addedEnergies+j) = self % mainData(IESCATTER_XS, self % addedEnergies+j) + &
                                              self % MTdata(i) % xs(j-bottom + 1)
         end if
       end do
@@ -635,7 +659,8 @@ contains
     else
       K = CAPTURE_XS
     end if
-    self % mainData(TOTAL_XS, :) = sum(self % mainData(ESCATTER_XS:K,:),1)
+    self % mainData(TOTAL_XS, self % addedEnergies+1:Ngrid + self % addedEnergies) = &
+              sum(self % mainData(ESCATTER_XS:K,self % addedEnergies+1:Ngrid + self % addedEnergies),1)
 
     ! Load Map of MT -> local index of a reaction
     do i = 1,size(self % MTdata)

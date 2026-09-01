@@ -175,6 +175,7 @@ contains
     r = p % pRNG % get()
     collDat % MT = microXss % invert(r)
 
+
   end subroutine sampleCollision
 
   !!
@@ -290,17 +291,17 @@ contains
     else
       call self % scatterInLAB(p, collDat, reac)
     end if
-
     ! Apply weigth change
     if (p % E < self % minE) then
       p % w = p % w
       p % isDead = .true.
     else if (p % E > self % maxE) then
       p % E = self % maxE-10e-3
-      p % w = p % w * reac % release(p % E)
+      p % w = p % w * reac % release(collDat % E)
     else
-      p % w = p % w * reac % release(p % E)
+      p % w = p % w * reac % release(collDat % E)
     end if
+
     
 
   end subroutine inelastic
