@@ -11,22 +11,33 @@ XSdata   ce;
 dataType h;
 seed 42;
 outputFormat asciiJSON;
+outputFile ../output/150MeV_2d_dx005;
 
-collisionOperator { protonCE {type protonCEstd; minEnergy 6; maxEnergy 200;} 
+collisionOperator { protonCE {type protonCEstd; minEnergy 1; maxEnergy 200;} 
                   }
 
-transportOperator { type transportOperatorSBM; minEnergy 6; maxEnergy 200;
+transportOperator { type transportOperatorSBM; minEnergy 1; maxEnergy 200; dx 0.05;
                   }
 
 source {
   type pointSource;
   r (0 0 0);
+  rStd 0.05;
+  rNozzle 0.05;
   dir (1 0 0);
   particle proton;
   E 150.0;
 }
 
-tally { pE {type protonEnergyClerk; map {type spaceMap; axis x; grid lin; min 0; max 20; N 200;}}
+tally { 
+  pE {type protonEnergyClerk; 
+      map {type spaceMap; axis z; grid lin; min 0; max 20; N 400;}}
+  pExy {type protonEnergyClerk; 
+      map {type multiMap; maps ( mapX mapY );
+        mapX {type spaceMap; axis x; grid lin; min 0; max 20; N 200;}
+        mapY {type spaceMap; axis y; grid lin; min -5; max 5; N 200;}
+        }
+      }
 }
 
 
@@ -37,7 +48,7 @@ geometry {
 
     surfaces
     {
-      squareBound { id 1; type box; origin ( 10.0  0.0  0.0); halfwidth (10.0 50.0 50.0); }
+      squareBound { id 1; type box; origin ( 25.0  0.0  0.0); halfwidth (25.0 50.0 50.0); }
     }
 
 

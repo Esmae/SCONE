@@ -522,8 +522,6 @@ contains
       self % eGrid(1:self % addedEnergies) = 10.0 ** exponent
     end if
 
-    print *, self % eGrid
-
     ! Load Main XSs
     self % mainData(TOTAL_XS,self % addedEnergies+1:Ngrid + self % addedEnergies)     = ACE % ESZ_XS('totalXS')
     self % mainData(ESCATTER_XS,self % addedEnergies+1:Ngrid + self % addedEnergies)  = ACE % ESZ_XS('elasticXS')

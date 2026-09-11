@@ -27,8 +27,11 @@ module pointSource_class
   !!
   !! Private members:
   !!   r            -> source position
+  !!   rNozzle      -> source nozzle radius
+  !!   rStd         -> source position standard deviation
   !!   dir          -> optional source direction
   !!   E            -> source energy
+  !!   Estd         -> source energy standard deviation
   !!   G            -> source group
   !!   probG        -> vector of probabilities of producing particle in group G
   !!   particleType -> source particle type
@@ -57,8 +60,11 @@ module pointSource_class
   type, public,extends(configSource) :: pointSource
     private
     real(defReal),dimension(3)                :: r   = ZERO
+    real(defReal)                             :: rNozzle = ZERO
+    real(defReal)                             :: rStd = ZERO
     real(defReal),dimension(3)                :: dir = ZERO
     real(defReal)                             :: E   = ZERO
+    real(defReal)                             :: Estd = ZERO
     integer(shortInt)                         :: G   = 0
     real(defReal), dimension(:), allocatable  :: probG
     integer(shortInt)                         :: particleType = P_NEUTRON
@@ -126,6 +132,10 @@ contains
       call fatalError(Here, 'Source position must have three components')
     end if
     self % r = temp
+
+    call dict % getOrDefault(self % rNozzle, 'rNozzle', ZERO)
+    call dict % getOrDefault(self % rStd, 'rStd', ZERO)
+    call dict % getOrDefault(self % Estd, 'Estd', ZERO)
 
     call self % geom % whatIsAt(matIdx, uniqueID, self % r)
     if (matIdx == OUTSIDE_MAT) then
@@ -207,8 +217,25 @@ contains
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
+    real(defReal)                       :: u1, u2, x1, x2
 
-    p % r = self % r
+    if (self % rNozzle == ZERO) then
+      p % r = self % r
+    else
+      do 
+        u1 = rand % get()
+        u2 = rand % get()
+        x1 = self % r(1) + self % rStd * sqrt(-2.0 * log(u1)) * cos(TWO * acos(-ONE)*u2)
+        u1 = rand % get()
+        u2 = rand % get()
+        x2 = self % r(2) + self % rStd * sqrt(-2.0 * log(u1)) * cos(TWO * acos(-ONE)*u2)
+        if (sqrt(x1 ** 2 + x2 ** 2) <= self % rNozzle) then 
+          p % r = [x1, x2, self % r(3)]
+          exit
+        end if
+      end do
+    end if
+    
 
   end subroutine samplePosition
 
@@ -246,7 +273,7 @@ contains
     class(pointSource), intent(inout)   :: self
     class(particleState), intent(inout) :: p
     class(RNG), intent(inout)           :: rand
-    real(defReal)                       :: r
+    real(defReal)                       :: r, u1, u2
     integer(shortInt)                   :: g
 
     if (self % isMG) then
@@ -266,7 +293,13 @@ contains
         p % isMG = .true.
       end if
     else
-      p % E = self % E
+      if (self % Estd == ZERO) then
+        p % E = self % E
+      else
+        u1 = rand % get()
+        u2 = rand % get()
+        p % E = self % E + self % Estd * sqrt(-2.0 * log(u1)) * cos(TWO * acos(-ONE)*u2)
+      end if
       p % isMG = .false.
     end if
 

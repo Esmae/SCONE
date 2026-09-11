@@ -182,6 +182,9 @@ contains
     if (dict % isPresent('minEnergy')) then
       call dict % get(self % minE, 'minEnergy')
     end if
+    if (dict % isPresent('dx')) then
+      call dict % get(self % dx, 'dx')
+    end if
 
   end subroutine init
 
