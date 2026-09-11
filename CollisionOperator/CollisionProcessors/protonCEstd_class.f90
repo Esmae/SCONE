@@ -255,9 +255,8 @@ contains
     isFixed = isFixed .or. (collDat % kT == ZERO)
 
     ! Apply criterion for Free-Gas vs Fixed Target scattering
-    if (.not. reac % inCMFrame()) then
-      call self % scatterInLAB(p, collDat, reac)
-    elseif (isFixed) then
+    ! elasticNeutronScatter is hardcoded in CM frame...
+    if (isFixed) then
       call self % scatterFromFixed(p, collDat, reac)
     else
       call self % scatterFromMoving(p, collDat, reac)
@@ -296,7 +295,7 @@ contains
       p % w = p % w
       p % isDead = .true.
     else if (p % E > self % maxE) then
-      p % E = self % maxE-10e-3
+      p % E = self % maxE - 1e-6
       p % w = p % w * reac % release(collDat % E)
     else
       p % w = p % w * reac % release(collDat % E)
@@ -318,7 +317,7 @@ contains
     class(particleDungeon),intent(inout) :: nextCycle
 
     if (p % E < self % minE) p % isDead = .true.
-    if (p % E > self % maxE) p % E = self % maxE-10e-3
+    if (p % E > self % maxE) p % E = self % maxE - 1e-6
 
   end subroutine cutoffs
 

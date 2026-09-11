@@ -225,12 +225,12 @@ contains
       do 
         u1 = rand % get()
         u2 = rand % get()
-        x1 = self % r(1) + self % rStd * sqrt(-2.0 * log(u1)) * cos(TWO * acos(-ONE)*u2)
+        x1 = self % r(2) + self % rStd * sqrt(-2.0 * log(u1)) * cos(TWO * acos(-ONE)*u2)
         u1 = rand % get()
         u2 = rand % get()
-        x2 = self % r(2) + self % rStd * sqrt(-2.0 * log(u1)) * cos(TWO * acos(-ONE)*u2)
+        x2 = self % r(3) + self % rStd * sqrt(-2.0 * log(u1)) * cos(TWO * acos(-ONE)*u2)
         if (sqrt(x1 ** 2 + x2 ** 2) <= self % rNozzle) then 
-          p % r = [x1, x2, self % r(3)]
+          p % r = [self % r(1), x1, x2]
           exit
         end if
       end do
